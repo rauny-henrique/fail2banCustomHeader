@@ -7,6 +7,7 @@ import: github.com/rauny-henrique/fail2ban
 summary: 'Blacklist (or whitelist) IP depending on some conditions'
 
 testData:
+  clientHeader: "Cf-Connecting-IP"
   whitelist:
     # allow requests from ::1 or 127.0.0.1
     ip: "::1,127.0.0.1"
