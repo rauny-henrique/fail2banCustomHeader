@@ -13,9 +13,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tomMoulard/fail2ban/files"
-	"github.com/tomMoulard/fail2ban/ipchecking"
-	logger "github.com/tomMoulard/fail2ban/log"
+	"github.com/rauny-henrique/fail2ban/files"
+	"github.com/rauny-henrique/fail2ban/ipchecking"
+	logger "github.com/rauny-henrique/fail2ban/log"
 )
 
 func init() {
@@ -55,9 +55,10 @@ type List struct {
 
 // Config struct.
 type Config struct {
-	Blacklist List  `yaml:"blacklist"`
-	Whitelist List  `yaml:"whitelist"`
-	Rules     Rules `yaml:"port"`
+	Blacklist    List   `yaml:"blacklist"`
+	Whitelist    List   `yaml:"whitelist"`
+	Rules        Rules  `yaml:"port"`
+	ClientHeader string `yaml:"clientHeader"`
 }
 
 // CreateConfig populates the Config data object.
@@ -68,6 +69,7 @@ func CreateConfig() *Config {
 			Findtime: "120s",
 			Enabled:  true,
 		},
+		ClientHeader: "Cf-Connecting-IP",
 	}
 }
 
@@ -135,11 +137,12 @@ func TransformRule(r Rules) (RulesTransformed, error) {
 
 // Fail2Ban holds the necessary components of a Traefik plugin.
 type Fail2Ban struct {
-	next      http.Handler
-	name      string
-	whitelist ipchecking.NetIPs
-	blacklist ipchecking.NetIPs
-	rules     RulesTransformed
+	next         http.Handler
+	name         string
+	whitelist    ipchecking.NetIPs
+	blacklist    ipchecking.NetIPs
+	rules        RulesTransformed
+	clientHeader string
 
 	muIP     sync.Mutex
 	ipViewed map[string]IPViewed
@@ -203,12 +206,13 @@ func New(_ context.Context, next http.Handler, config *Config, name string) (htt
 	log.Println("Plugin: FailToBan is up and running")
 
 	return &Fail2Ban{
-		next:      next,
-		name:      name,
-		whitelist: whitelist,
-		blacklist: blacklist,
-		rules:     rules,
-		ipViewed:  make(map[string]IPViewed),
+		next:         next,
+		name:         name,
+		whitelist:    whitelist,
+		blacklist:    blacklist,
+		rules:        rules,
+		clientHeader: config.ClientHeader,
+		ipViewed:     make(map[string]IPViewed),
 	}, nil
 }
 
@@ -217,7 +221,7 @@ func New(_ context.Context, next http.Handler, config *Config, name string) (htt
 func (u *Fail2Ban) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	LoggerDEBUG.Printf("New request: %+v", *req)
 
-	remoteIP, _, err := net.SplitHostPort(req.RemoteAddr)
+	remoteIP, _, err := u.getClientHeader(req)
 	if err != nil {
 		LoggerDEBUG.Printf("failed to split remote address %q: %v", req.RemoteAddr, err)
 
@@ -247,6 +251,21 @@ func (u *Fail2Ban) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	u.next.ServeHTTP(rw, req)
+}
+
+func (u *Fail2Ban) getClientHeader(req *http.Request) (string, string, error) {
+	if len(u.clientHeader) > 0 {
+		clientHeader := req.Header.Get(u.clientHeader)
+		if len(clientHeader) == 0 {
+			return "", "", fmt.Errorf("failed to extract Client Identifier from %q Header", u.clientHeader)
+		}
+		return clientHeader, "", nil
+	}
+	if remoteIP, _, err := net.SplitHostPort(req.RemoteAddr); err != nil {
+		return "", "", fmt.Errorf("failed to extract Client IP from RemoteAddr: %w", err)
+	} else {
+		return remoteIP, "", nil
+	}
 }
 
 // shouldAllow check if the request should be allowed.
