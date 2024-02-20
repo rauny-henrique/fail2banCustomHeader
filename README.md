@@ -7,6 +7,13 @@ plugin for Traefik.
 
 ## Configuration
 
+### ClientHeader
+Set custom client header using like this:
+```yml
+testData:
+  clientHeader: "Cf-Connecting-IP"
+```
+
 ### Whitelist
 You can whitelist some IP using this:
 ```yml
