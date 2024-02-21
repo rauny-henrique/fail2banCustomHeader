@@ -1,4 +1,4 @@
-module github.com/rauny-henrique/fail2ban
+module github.com/rauny-henrique/fail2banCustomHeader
 
 go 1.21
 

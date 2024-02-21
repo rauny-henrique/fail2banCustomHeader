@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/rauny-henrique/fail2ban/files"
+	"github.com/rauny-henrique/fail2banCustomHeader/files"
 )
 
 func Example() {

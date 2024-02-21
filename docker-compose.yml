@@ -7,15 +7,15 @@ services:
       - --api.insecure=true
       - --providers.docker
       - --log.level=DEBUG
-      - --experimental.localPlugins.fail2ban-local.moduleName=github.com/rauny-henrique/fail2ban
-      - --experimental.plugins.fail2ban-registery.modulename=github.com/rauny-henrique/fail2ban
+      - --experimental.localPlugins.fail2ban-local.moduleName=github.com/rauny-henrique/fail2banCustomHeader
+      - --experimental.plugins.fail2ban-registery.modulename=github.com/rauny-henrique/fail2banCustomHeader
       - --experimental.plugins.fail2ban-registery.version=v0.7.1
     ports:
       - 80:80
       - 8080:8080
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - .:/plugins-local/src/github.com/rauny-henrique/fail2ban/
+      - .:/plugins-local/src/github.com/rauny-henrique/fail2banCustomHeader/
     tty: true
 
   whoami:

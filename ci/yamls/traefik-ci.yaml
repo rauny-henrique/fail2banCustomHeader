@@ -4,7 +4,7 @@ pilot:
 experimental:
   devPlugin:
     goPath:
-    moduleName: github.com/rauny-henrique/fail2ban
+    moduleName: github.com/rauny-henrique/fail2banCustomHeader
 
 entryPoints:
   http:

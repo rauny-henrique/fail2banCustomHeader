@@ -2,7 +2,7 @@ displayName: Fail2BanCustomHeader
 type: middleware
 iconPath: .assets/f2b.png
 
-import: github.com/rauny-henrique/fail2ban
+import: github.com/rauny-henrique/fail2banCustomHeader
 
 summary: 'Blacklist (or whitelist) IP depending on some conditions with a custom client header'
 

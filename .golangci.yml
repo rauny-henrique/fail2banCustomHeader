@@ -28,7 +28,7 @@ linters-settings:
       main:
         allow:
           - $gostd
-          - github.com/rauny-henrique/fail2ban
+          - github.com/rauny-henrique/fail2banCustomHeader
   godox:
     keywords:
       - FIXME

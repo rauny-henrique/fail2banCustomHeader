@@ -13,9 +13,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rauny-henrique/fail2ban/files"
-	"github.com/rauny-henrique/fail2ban/ipchecking"
-	logger "github.com/rauny-henrique/fail2ban/log"
+	"github.com/rauny-henrique/fail2banCustomHeader/files"
+	"github.com/rauny-henrique/fail2banCustomHeader/ipchecking"
+	logger "github.com/rauny-henrique/fail2banCustomHeader/log"
 )
 
 func init() {
