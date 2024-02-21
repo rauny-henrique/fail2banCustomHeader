@@ -1,10 +1,10 @@
-displayName: Fail2Ban
+displayName: Fail2BanCustomHeader
 type: middleware
 iconPath: .assets/f2b.png
 
 import: github.com/rauny-henrique/fail2ban
 
-summary: 'Blacklist (or whitelist) IP depending on some conditions'
+summary: 'Blacklist (or whitelist) IP depending on some conditions with a custom client header'
 
 testData:
   clientHeader: "Cf-Connecting-IP"
