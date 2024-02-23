@@ -9,7 +9,7 @@ services:
       - --log.level=DEBUG
       - --experimental.localPlugins.fail2ban-local.moduleName=github.com/rauny-henrique/fail2banCustomHeader
       - --experimental.plugins.fail2ban-registery.modulename=github.com/rauny-henrique/fail2banCustomHeader
-      - --experimental.plugins.fail2ban-registery.version=v0.7.1
+      - --experimental.plugins.fail2ban-registery.version=v0.2.0
     ports:
       - 80:80
       - 8080:8080
@@ -25,6 +25,7 @@ services:
       traefik.http.routers.fail2ban-local.rule: Host(`fail2ban-local.localhost`)
       traefik.http.routers.fail2ban-local.middlewares: fail2ban-local
       traefik.http.middlewares.fail2ban-local.plugin.fail2ban-local.rules.enabled: true
+      traefik.http.middlewares.fail2ban-local.plugin.fail2ban-local.clientHeader: Cf-Connecting-IP
       traefik.http.middlewares.fail2ban-local.plugin.fail2ban-local.rules.bantime: 3h
       traefik.http.middlewares.fail2ban-local.plugin.fail2ban-local.rules.findtime: 3h
       traefik.http.middlewares.fail2ban-local.plugin.fail2ban-local.rules.maxretry: 4

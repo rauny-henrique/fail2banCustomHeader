@@ -1,5 +1,5 @@
 // Package fail2ban contains the Fail2ban mechanism for the plugin.
-package fail2ban
+package fail2banCustomHeader
 
 import (
 	"context"

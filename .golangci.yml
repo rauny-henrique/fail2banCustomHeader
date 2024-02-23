@@ -64,7 +64,7 @@ linters-settings:
       - name: redefines-builtin-id
   testpackage:
     allow-packages:
-      - fail2ban
+      - fail2banCustomHeader
 
 issues:
   exclude-use-default: false
@@ -74,7 +74,7 @@ issues:
     - path: '(.+)_test.go'
       linters:
         - funlen
-    - path: 'fail2ban.go'
+    - path: 'fail2banCustomHeader.go'
       text: 'calculated cyclomatic complexity for function shouldAllow is 12'
-    - path: 'fail2ban_test.go' # false-positive
+    - path: 'fail2banCustomHeader_test.go' # false-positive
       text: 'response body must be closed'

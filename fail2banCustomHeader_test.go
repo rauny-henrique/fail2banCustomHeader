@@ -1,4 +1,4 @@
-package fail2ban
+package fail2banCustomHeader
 
 import (
 	"context"
