@@ -219,11 +219,11 @@ func New(_ context.Context, next http.Handler, config *Config, name string) (htt
 // ServeHTTP iterates over every headers to match the ones specified in the
 // configuration and return nothing if regexp failed.
 func (u *Fail2Ban) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	log.Printf("New request: %+v", *req)
+	LoggerDEBUG.Printf("New request: %+v", *req)
 
 	remoteIP, _, err := u.getClientHeader(req)
 	if err != nil {
-		log.Printf("failed to split remote address %q: %v", req.RemoteAddr, err)
+		LoggerDEBUG.Printf("failed to split remote address %q: %v", req.RemoteAddr, err)
 
 		return
 	}
@@ -281,7 +281,7 @@ func (u *Fail2Ban) shouldAllow(remoteIP, reqURL string) bool {
 		if reg.Match(urlBytes) {
 			u.ipViewed[remoteIP] = IPViewed{time.Now(), ip.nb + 1, true}
 
-			log.Printf("Url (%q) was matched by regexpBan: %q for %q", reqURL, reg.String(), remoteIP)
+			LoggerDEBUG.Printf("Url (%q) was matched by regexpBan: %q for %q", reqURL, reg.String(), remoteIP)
 
 			return false
 		}
@@ -290,7 +290,7 @@ func (u *Fail2Ban) shouldAllow(remoteIP, reqURL string) bool {
 	// Urlregexp allow
 	for _, reg := range u.rules.URLRegexpAllow {
 		if reg.Match(urlBytes) {
-			log.Printf("Url (%q) was matched by regexpAllow: %q for %q", reqURL, reg.String(), remoteIP)
+			LoggerDEBUG.Printf("Url (%q) was matched by regexpAllow: %q for %q", reqURL, reg.String(), remoteIP)
 
 			return true
 		}
@@ -300,7 +300,7 @@ func (u *Fail2Ban) shouldAllow(remoteIP, reqURL string) bool {
 	if !foundIP {
 		u.ipViewed[remoteIP] = IPViewed{time.Now(), 1, false}
 
-		log.Printf("welcome %q", remoteIP)
+		LoggerDEBUG.Printf("welcome %q", remoteIP)
 
 		return true
 	}
@@ -338,7 +338,7 @@ func (u *Fail2Ban) shouldAllow(remoteIP, reqURL string) bool {
 
 	u.ipViewed[remoteIP] = IPViewed{time.Now(), 1, false}
 
-	log.Printf("welcome back %q", remoteIP)
+	LoggerDEBUG.Printf("welcome back %q", remoteIP)
 
 	return true
 }
