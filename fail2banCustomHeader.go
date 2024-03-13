@@ -331,7 +331,7 @@ func (u *Fail2Ban) shouldAllow(remoteIP, reqURL string) bool {
 		}
 
 		u.ipViewed[remoteIP] = IPViewed{ip.viewed, ip.nb + 1, false}
-		log.Printf("welcome back %q for the %d time", remoteIP, ip.nb+1)
+		LoggerDEBUG.Printf("welcome back %q for the %d time", remoteIP, ip.nb+1)
 
 		return true
 	}
