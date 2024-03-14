@@ -223,7 +223,7 @@ func (u *Fail2Ban) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	remoteIP, _, err := u.getClientHeader(req)
 	if err != nil {
-		LoggerDEBUG.Printf("failed to split remote address %q: %v", req.RemoteAddr, err)
+		log.Printf("failed to split remote address %q: %v", req.RemoteAddr, err)
 
 		return
 	}
@@ -256,10 +256,9 @@ func (u *Fail2Ban) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 func (u *Fail2Ban) getClientHeader(req *http.Request) (string, string, error) {
 	if len(u.clientHeader) > 0 {
 		clientHeader := req.Header.Get(u.clientHeader)
-		if len(clientHeader) == 0 {
-			return "", "", fmt.Errorf("failed to extract Client Identifier from %q Header", u.clientHeader)
+		if len(clientHeader) != 0 {
+			return clientHeader, "", nil
 		}
-		return clientHeader, "", nil
 	}
 	if remoteIP, _, err := net.SplitHostPort(req.RemoteAddr); err != nil {
 		return "", "", fmt.Errorf("failed to extract Client IP from RemoteAddr: %w", err)
