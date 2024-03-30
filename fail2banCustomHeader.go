@@ -3,14 +3,13 @@ package fail2banCustomHeader
 
 import (
 	"context"
-	"encoding/json"
+	// "encoding/json"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"regexp"
-	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -18,11 +17,60 @@ import (
 	"github.com/rauny-henrique/fail2banCustomHeader/files"
 	"github.com/rauny-henrique/fail2banCustomHeader/ipchecking"
 	logger "github.com/rauny-henrique/fail2banCustomHeader/log"
+	// bolt "go.etcd.io/bbolt"
 )
+
+// var DATABASE
 
 func init() {
 	log.SetOutput(os.Stdout)
+
+	// DATABASE = bolt.Open("fail2ban.db", 0600, nil)
+	// DATABASE.Update(func(tx *bolt.Tx) error {
+	// 	b, err := tx.CreateBucketIfNotExists([]byte("fail2ban"))
+	// 	if err != nil {
+	// 		return fmt.Errorf("create bucket: %s", err)
+	// 	}
+	// 	return nil
+	// })
 }
+
+// func getDbValue(key string) (string) {
+// 	DATABASE.View(func(tx *bolt.Tx) error {
+// 		b := tx.Bucket([]byte("fail2ban"))
+// 		v := b.Get([]byte(key))
+// 		return v
+// 	})
+// }
+
+// func setDbValue(key string, value string) {
+// 	DATABASE.Update(func(tx *bolt.Tx) error {
+// 		b := tx.Bucket([]byte("fail2ban"))
+// 		err := b.Put([]byte(key), []byte(value))
+// 	})
+// }
+
+// func deleteDbKey(key string) {
+// 	DATABASE.Update(func (tx *bolt.Tx) error {
+// 		b := tx.Bucket([]byte("fail2ban"))
+// 		err := b.Delete([]byte(key))
+// 	})
+// }
+
+// func getAllDbKeys(key string) {
+// 	db.View(func(tx *bolt.Tx) error {
+// 		b := tx.Bucket([]byte("fail2ban"))
+// 		c := b.Cursor()
+
+// 		var 
+	
+// 		for k, v := c.First(); k != nil; k, v = c.Next() {
+// 			fmt.Printf("key=%s, value=%s\n", k, v)
+// 		}
+	
+// 		return nil
+// 	})
+// }
 
 // IPViewed struct.
 type IPViewed struct {
@@ -87,6 +135,12 @@ type RulesTransformed struct {
 
 // TransformRule morph a Rules object into a RulesTransformed.
 func TransformRule(r Rules) (RulesTransformed, error) {
+	defer func() {
+		if panicInfo := recover(); panicInfo != nil {
+			log.Printf("TransformRule panic!!!")
+		}
+	}()
+
 	bantime, err := time.ParseDuration(r.Bantime)
 	if err != nil {
 		return RulesTransformed{}, fmt.Errorf("failed to parse bantime duration: %w", err)
@@ -152,6 +206,12 @@ type Fail2Ban struct {
 
 // ImportIP extract all ip from config sources.
 func ImportIP(list List) ([]string, error) {
+	defer func() {
+		if panicInfo := recover(); panicInfo != nil {
+			log.Printf("ImportIP panic!!!")
+		}
+	}()
+
 	var rlist []string
 
 	for _, ip := range list.Files {
@@ -171,28 +231,31 @@ func ImportIP(list List) ([]string, error) {
 	return rlist, nil
 }
 
-type BanIp struct {
-	ip     string
-	viewed time.Time
-	nb     int
-}
+// type BanIp struct {
+// 	viewed time.Time
+// 	nb     int
+// }
 
 // Import banned IP's from local file.
-func (u *Fail2Ban) ImportBannedIPs() (string, error) {
-	content, err := files.GetFileContent("banned-ips.json")
-	if err != nil {
-		return "", fmt.Errorf("error when getting file content: %w", err)
-	} else {
-		var jsonContent []BanIp
-		json.Unmarshal([]byte(content), &jsonContent)
-	
-		for _, item := range jsonContent {
-			u.ipViewed[item.ip] = IPViewed{item.viewed, item.nb, true}
-		}
-	}
+// func ImportBannedIPs() (map[string]IPViewed, error) {
+// 	var bannedIps = make(map[string]IPViewed)
 
-	return "", nil
-}
+// 	content := getDbValue()
+// 	if err != nil {
+// 		return nil, fmt.Errorf("error when getting file content: %w", err)
+// 	} else {
+// 		var jsonContent []BanIp
+// 		json.Unmarshal([]byte(content), &jsonContent)
+	
+// 		for key, item := range jsonContent {
+// 			bannedIps[key] = IPViewed{item.viewed, item.nb, true}
+// 		}
+
+// 		log.Printf("FailToBan Banned IPs : '%+v'", bannedIps)
+// 	}
+
+// 	return bannedIps, nil
+// }
 
 // New instantiates and returns the required components used to handle a HTTP
 // request.
@@ -228,7 +291,10 @@ func New(_ context.Context, next http.Handler, config *Config, name string) (htt
 		return nil, fmt.Errorf("error when Transforming rules: %w", err)
 	}
 
-	ImportBannedIPs()
+	// bannedIps, err := ImportBannedIPs()
+	// if err != nil {
+	// 	return nil, fmt.Errorf("error when get banned Ips: %w", err)
+	// }
 
 	log.Println("Plugin: FailToBan is up and running")
 
@@ -248,7 +314,7 @@ func New(_ context.Context, next http.Handler, config *Config, name string) (htt
 func (u *Fail2Ban) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	defer func() {
 		if panicInfo := recover(); panicInfo != nil {
-			log.Printf("%v, %s", panicInfo, string(debug.Stack()))
+			log.Printf("ServeHTTP panic!!!")
 			u.next.ServeHTTP(rw, req)
 		}
 	}()
@@ -288,6 +354,12 @@ func (u *Fail2Ban) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (u *Fail2Ban) getClientHeader(req *http.Request) (string, string, error) {
+	defer func() {
+		if panicInfo := recover(); panicInfo != nil {
+			log.Printf("getClientHeader panic!!!")
+		}
+	}()
+
 	if len(u.clientHeader) > 0 {
 		clientHeader := req.Header.Get(u.clientHeader)
 		if len(clientHeader) != 0 {
@@ -303,6 +375,12 @@ func (u *Fail2Ban) getClientHeader(req *http.Request) (string, string, error) {
 
 // shouldAllow check if the request should be allowed.
 func (u *Fail2Ban) shouldAllow(remoteIP, reqURL string) bool {
+	defer func() {
+		if panicInfo := recover(); panicInfo != nil {
+			log.Printf("shouldAllow panic!!!")
+		}
+	}()
+
 	// Urlregexp ban
 	u.muIP.Lock()
 	defer u.muIP.Unlock()
