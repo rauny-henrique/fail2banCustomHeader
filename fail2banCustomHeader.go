@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"runtime/debug"
 
 	"github.com/rauny-henrique/fail2banCustomHeader/files"
 	"github.com/rauny-henrique/fail2banCustomHeader/ipchecking"
@@ -219,6 +220,13 @@ func New(_ context.Context, next http.Handler, config *Config, name string) (htt
 // ServeHTTP iterates over every headers to match the ones specified in the
 // configuration and return nothing if regexp failed.
 func (u *Fail2Ban) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	defer func() {
+		if panicInfo := recover(); panicInfo != nil {
+			log.Printf("%v, %s", panicInfo, string(debug.Stack()))
+			u.next.ServeHTTP(rw, req)
+		}
+	}()
+
 	LoggerDEBUG.Printf("New request: %+v", *req)
 
 	remoteIP, _, err := u.getClientHeader(req)
