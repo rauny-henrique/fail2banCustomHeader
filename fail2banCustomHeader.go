@@ -3,7 +3,7 @@ package fail2banCustomHeader
 
 import (
 	"context"
-	// "encoding/json"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
@@ -17,60 +17,94 @@ import (
 	"github.com/rauny-henrique/fail2banCustomHeader/files"
 	"github.com/rauny-henrique/fail2banCustomHeader/ipchecking"
 	logger "github.com/rauny-henrique/fail2banCustomHeader/log"
-	// bolt "go.etcd.io/bbolt"
+	bolt "go.etcd.io/bbolt"
 )
 
-// var DATABASE
+var DATABASE *bolt.DB
 
 func init() {
 	log.SetOutput(os.Stdout)
 
-	// DATABASE = bolt.Open("fail2ban.db", 0600, nil)
-	// DATABASE.Update(func(tx *bolt.Tx) error {
-	// 	b, err := tx.CreateBucketIfNotExists([]byte("fail2ban"))
-	// 	if err != nil {
-	// 		return fmt.Errorf("create bucket: %s", err)
-	// 	}
-	// 	return nil
-	// })
+	DATABASE, err := bolt.Open("fail2ban.db", 0600, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	DATABASE.Update(func(tx *bolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists([]byte("fail2ban"))
+		if err != nil {
+			return fmt.Errorf("create bucket: %s", err)
+		}
+		return nil
+	})
 }
 
-// func getDbValue(key string) (string) {
-// 	DATABASE.View(func(tx *bolt.Tx) error {
-// 		b := tx.Bucket([]byte("fail2ban"))
-// 		v := b.Get([]byte(key))
-// 		return v
-// 	})
-// }
+func getDbValue(key string) (IPViewed, bool) {
+	var value IPViewed
+	var result bool = false
 
-// func setDbValue(key string, value string) {
-// 	DATABASE.Update(func(tx *bolt.Tx) error {
-// 		b := tx.Bucket([]byte("fail2ban"))
-// 		err := b.Put([]byte(key), []byte(value))
-// 	})
-// }
+	DATABASE.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("fail2ban"))
+		v := b.Get([]byte(key))
+		
+		if (v != nil) {
+			var jsonContent IPViewed
+			json.Unmarshal(v, &jsonContent)
+			value = jsonContent
+			result = true
+		}
 
-// func deleteDbKey(key string) {
-// 	DATABASE.Update(func (tx *bolt.Tx) error {
-// 		b := tx.Bucket([]byte("fail2ban"))
-// 		err := b.Delete([]byte(key))
-// 	})
-// }
+		return nil
+	})
 
-// func getAllDbKeys(key string) {
-// 	db.View(func(tx *bolt.Tx) error {
-// 		b := tx.Bucket([]byte("fail2ban"))
-// 		c := b.Cursor()
+	return value, result
+}
 
-// 		var 
-	
-// 		for k, v := c.First(); k != nil; k, v = c.Next() {
-// 			fmt.Printf("key=%s, value=%s\n", k, v)
-// 		}
-	
-// 		return nil
-// 	})
-// }
+func setDbValue(key string, value string) {
+	DATABASE.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("fail2ban"))
+		err := b.Put([]byte(key), []byte(value))
+		return err
+	})
+}
+
+func deleteDbKey(key string) {
+	DATABASE.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("fail2ban"))
+		err := b.Delete([]byte(key))
+		return err
+	})
+}
+
+func getAllDbKeysJson() string {
+	var bannedIps string
+
+	DATABASE.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("fail2ban"))
+		c := b.Cursor()
+
+		bannedIps = bannedIps + "["
+
+		var index = 0
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			if index > 0 {
+				bannedIps = bannedIps + "," + string(v)
+			} else {
+				bannedIps = bannedIps + string(v)
+			}
+			index++
+		}
+
+		bannedIps = bannedIps + "]"
+
+		return nil
+	})
+
+	return bannedIps
+}
+
+func getIPViewedJson(time string, nb string, blacklisted string) (string) {
+	return "{\"viewed\": \"" + time + "\",\"nb\": \"" + nb + "\",\"blacklisted\": \"" + blacklisted + "\"}"
+}
 
 // IPViewed struct.
 type IPViewed struct {
@@ -135,12 +169,6 @@ type RulesTransformed struct {
 
 // TransformRule morph a Rules object into a RulesTransformed.
 func TransformRule(r Rules) (RulesTransformed, error) {
-	defer func() {
-		if panicInfo := recover(); panicInfo != nil {
-			log.Printf("TransformRule panic!!!")
-		}
-	}()
-
 	bantime, err := time.ParseDuration(r.Bantime)
 	if err != nil {
 		return RulesTransformed{}, fmt.Errorf("failed to parse bantime duration: %w", err)
@@ -206,12 +234,6 @@ type Fail2Ban struct {
 
 // ImportIP extract all ip from config sources.
 func ImportIP(list List) ([]string, error) {
-	defer func() {
-		if panicInfo := recover(); panicInfo != nil {
-			log.Printf("ImportIP panic!!!")
-		}
-	}()
-
 	var rlist []string
 
 	for _, ip := range list.Files {
@@ -231,31 +253,29 @@ func ImportIP(list List) ([]string, error) {
 	return rlist, nil
 }
 
-// type BanIp struct {
-// 	viewed time.Time
-// 	nb     int
-// }
+type BanIp struct {
+	ip     string
+	viewed time.Time
+	nb     int
+}
 
 // Import banned IP's from local file.
-// func ImportBannedIPs() (map[string]IPViewed, error) {
-// 	var bannedIps = make(map[string]IPViewed)
+func ImportBannedIPs() (map[string]IPViewed, error) {
+	var bannedIps = make(map[string]IPViewed)
 
-// 	content := getDbValue()
-// 	if err != nil {
-// 		return nil, fmt.Errorf("error when getting file content: %w", err)
-// 	} else {
-// 		var jsonContent []BanIp
-// 		json.Unmarshal([]byte(content), &jsonContent)
-	
-// 		for key, item := range jsonContent {
-// 			bannedIps[key] = IPViewed{item.viewed, item.nb, true}
-// 		}
+	content := getAllDbKeysJson()
 
-// 		log.Printf("FailToBan Banned IPs : '%+v'", bannedIps)
-// 	}
+	var jsonContent []BanIp
+	json.Unmarshal([]byte(content), &jsonContent)
 
-// 	return bannedIps, nil
-// }
+	for _, item := range jsonContent {
+		bannedIps[item.ip] = IPViewed{item.viewed, item.nb, true}
+	}
+
+	log.Printf("FailToBan Banned IPs : '%+v'", bannedIps)
+
+	return bannedIps, nil
+}
 
 // New instantiates and returns the required components used to handle a HTTP
 // request.
@@ -354,12 +374,6 @@ func (u *Fail2Ban) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (u *Fail2Ban) getClientHeader(req *http.Request) (string, string, error) {
-	defer func() {
-		if panicInfo := recover(); panicInfo != nil {
-			log.Printf("getClientHeader panic!!!")
-		}
-	}()
-
 	if len(u.clientHeader) > 0 {
 		clientHeader := req.Header.Get(u.clientHeader)
 		if len(clientHeader) != 0 {
@@ -375,22 +389,16 @@ func (u *Fail2Ban) getClientHeader(req *http.Request) (string, string, error) {
 
 // shouldAllow check if the request should be allowed.
 func (u *Fail2Ban) shouldAllow(remoteIP, reqURL string) bool {
-	defer func() {
-		if panicInfo := recover(); panicInfo != nil {
-			log.Printf("shouldAllow panic!!!")
-		}
-	}()
-
 	// Urlregexp ban
 	u.muIP.Lock()
 	defer u.muIP.Unlock()
 
-	ip, foundIP := u.ipViewed[remoteIP]
+	ip, foundIP := getDbValue(remoteIP)
 	urlBytes := []byte(reqURL)
 
 	for _, reg := range u.rules.URLRegexpBan {
 		if reg.Match(urlBytes) {
-			u.ipViewed[remoteIP] = IPViewed{time.Now(), ip.nb + 1, true}
+			setDbValue(remoteIP, getIPViewedJson(time.Now().Local().String(), fmt.Sprintf("%v", ip.nb + 1), "true"))
 
 			LoggerDEBUG.Printf("Url (%q) was matched by regexpBan: %q for %q", reqURL, reg.String(), remoteIP)
 
@@ -409,7 +417,7 @@ func (u *Fail2Ban) shouldAllow(remoteIP, reqURL string) bool {
 
 	// Fail2Ban
 	if !foundIP {
-		u.ipViewed[remoteIP] = IPViewed{time.Now(), 1, false}
+		setDbValue(remoteIP, getIPViewedJson(time.Now().Local().String(), fmt.Sprintf("%v", 1), "false"))
 
 		LoggerDEBUG.Printf("welcome %q", remoteIP)
 
@@ -418,14 +426,14 @@ func (u *Fail2Ban) shouldAllow(remoteIP, reqURL string) bool {
 
 	if ip.blacklisted {
 		if time.Now().Before(ip.viewed.Add(u.rules.Bantime)) {
-			u.ipViewed[remoteIP] = IPViewed{ip.viewed, ip.nb + 1, true}
+			setDbValue(remoteIP, getIPViewedJson(ip.viewed.Local().String(), fmt.Sprintf("%v", ip.nb + 1), "true"))
 			log.Printf("%q is still banned since %q, %d request",
 				remoteIP, ip.viewed.Format(time.RFC3339), ip.nb+1)
 
 			return false
 		}
 
-		u.ipViewed[remoteIP] = IPViewed{time.Now(), 1, false}
+		setDbValue(remoteIP, getIPViewedJson(time.Now().Local().String(), fmt.Sprintf("%v", 1), "false"))
 
 		log.Println(remoteIP + " is no longer banned")
 
@@ -434,20 +442,20 @@ func (u *Fail2Ban) shouldAllow(remoteIP, reqURL string) bool {
 
 	if time.Now().Before(ip.viewed.Add(u.rules.Findtime)) {
 		if ip.nb+1 >= u.rules.MaxRetry {
-			u.ipViewed[remoteIP] = IPViewed{time.Now(), ip.nb + 1, true}
+			setDbValue(remoteIP, getIPViewedJson(time.Now().Local().String(), fmt.Sprintf("%v", ip.nb + 1), "true"))
 
 			log.Println(remoteIP + " is now banned temporarily")
 
 			return false
 		}
 
-		u.ipViewed[remoteIP] = IPViewed{ip.viewed, ip.nb + 1, false}
+		setDbValue(remoteIP, getIPViewedJson(ip.viewed.Local().String(), fmt.Sprintf("%v", ip.nb + 1), "false"))
 		LoggerDEBUG.Printf("welcome back %q for the %d time", remoteIP, ip.nb+1)
 
 		return true
 	}
 
-	u.ipViewed[remoteIP] = IPViewed{time.Now(), 1, false}
+	setDbValue(remoteIP, getIPViewedJson(time.Now().Local().String(), fmt.Sprintf("%v", 1), "false"))
 
 	LoggerDEBUG.Printf("welcome back %q", remoteIP)
 
