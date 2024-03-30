@@ -3,16 +3,17 @@ package fail2banCustomHeader
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"regexp"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
-	"runtime/debug"
 
 	"github.com/rauny-henrique/fail2banCustomHeader/files"
 	"github.com/rauny-henrique/fail2banCustomHeader/ipchecking"
@@ -170,6 +171,29 @@ func ImportIP(list List) ([]string, error) {
 	return rlist, nil
 }
 
+type BanIp struct {
+	ip     string
+	viewed time.Time
+	nb     int
+}
+
+// Import banned IP's from local file.
+func (u *Fail2Ban) ImportBannedIPs() (string, error) {
+	content, err := files.GetFileContent("banned-ips.json")
+	if err != nil {
+		return "", fmt.Errorf("error when getting file content: %w", err)
+	} else {
+		var jsonContent []BanIp
+		json.Unmarshal([]byte(content), &jsonContent)
+	
+		for _, item := range jsonContent {
+			u.ipViewed[item.ip] = IPViewed{item.viewed, item.nb, true}
+		}
+	}
+
+	return "", nil
+}
+
 // New instantiates and returns the required components used to handle a HTTP
 // request.
 func New(_ context.Context, next http.Handler, config *Config, name string) (http.Handler, error) {
@@ -203,6 +227,8 @@ func New(_ context.Context, next http.Handler, config *Config, name string) (htt
 	if err != nil {
 		return nil, fmt.Errorf("error when Transforming rules: %w", err)
 	}
+
+	ImportBannedIPs()
 
 	log.Println("Plugin: FailToBan is up and running")
 
