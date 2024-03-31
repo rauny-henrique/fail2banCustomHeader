@@ -6,9 +6,9 @@
 
 package xxhash
 
-// import (
-// 	"unsafe"
-// )
+import (
+	"unsafe"
+)
 
 // In the future it's possible that compiler optimizations will make these
 // XxxString functions unnecessary by realizing that calls such as
@@ -36,15 +36,14 @@ package xxhash
 // Sum64String computes the 64-bit xxHash digest of s.
 // It may be faster than Sum64([]byte(s)) by avoiding a copy.
 func Sum64String(s string) uint64 {
-	// b := *(*[]byte)(unsafe.Pointer(&sliceHeader{s, len(s)}))
-	return Sum64([]byte(s))
+	b := *(*[]byte)(unsafe.Pointer(&sliceHeader{s, len(s)}))
+	return Sum64(b)
 }
 
 // WriteString adds more data to d. It always returns len(s), nil.
 // It may be faster than Write([]byte(s)) by avoiding a copy.
 func (d *Digest) WriteString(s string) (n int, err error) {
-	d.Write([]byte(s))
-	// d.Write(*(*[]byte)(unsafe.Pointer(&sliceHeader{s, len(s)})))
+	d.Write(*(*[]byte)(unsafe.Pointer(&sliceHeader{s, len(s)})))
 	// d.Write always returns len(s), nil.
 	// Ignoring the return output and returning these fixed values buys a
 	// savings of 6 in the inliner's cost model.

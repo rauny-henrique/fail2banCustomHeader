@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"runtime/debug"
 
 	"github.com/rauny-henrique/fail2banCustomHeader/files"
 	"github.com/rauny-henrique/fail2banCustomHeader/ipchecking"
@@ -27,13 +28,10 @@ func init() {
 	log.SetOutput(os.Stdout)
 
 	rdb = redis.NewClient(&redis.Options{
-		Addr:     "redis_dev:6379",
+		Addr:     "redis_traefik:6379",
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
-
-	// Ensure that the connection is properly closed gracefully
-	defer rdb.Close()
 }
 
 func getDbValue(key string) (IPViewed, bool) {
@@ -287,7 +285,7 @@ func New(_ context.Context, next http.Handler, config *Config, name string) (htt
 func (u *Fail2Ban) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	defer func() {
 		if panicInfo := recover(); panicInfo != nil {
-			log.Printf("ServeHTTP panic!!!")
+			log.Printf("ServeHTTP panic: %v, %s", panicInfo, string(debug.Stack()))
 			u.next.ServeHTTP(rw, req)
 		}
 	}()

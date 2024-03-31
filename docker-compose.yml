@@ -1,8 +1,17 @@
 version: '3.9'
 
 services:
+  redis_traefik:
+    image: redis:7.2.1
+    ports:
+      - '6379:6379'
+    restart: always
+    command: "redis-server"
+    container_name: redis_traefik
   traefik:
-    image: traefik:v3.0
+    build:
+      context: .
+      dockerfile: ./Dockerfile
     command:
       - --api.insecure=true
       - --providers.docker
@@ -24,7 +33,7 @@ services:
       traefik.http.routers.fail2ban-local.rule: Host(`fail2ban-local.localhost`)
       traefik.http.routers.fail2ban-local.middlewares: fail2ban-local
       traefik.http.middlewares.fail2ban-local.plugin.fail2ban-local.rules.enabled: true
-      traefik.http.middlewares.fail2ban-local.plugin.fail2ban-local.clientHeader: Cf-Connecting-IP
+      traefik.http.middlewares.fail2ban-local.plugin.fail2ban-local.clientHeader: X-Real-Ip
       traefik.http.middlewares.fail2ban-local.plugin.fail2ban-local.rules.bantime: 3h
       traefik.http.middlewares.fail2ban-local.plugin.fail2ban-local.rules.findtime: 3h
       traefik.http.middlewares.fail2ban-local.plugin.fail2ban-local.rules.maxretry: 4
